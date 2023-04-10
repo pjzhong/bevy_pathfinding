@@ -2,6 +2,7 @@
 
 mod camera;
 mod game;
+mod jps;
 mod map;
 mod mouse;
 mod physics;

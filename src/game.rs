@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 use pathfinding::prelude::{astar, bfs, dijkstra};
 
-use crate::{CostsTile, CostsTileMap};
+use crate::{jps::Jps, CostsTile, CostsTileMap};
 
 use super::{
     world_position_to_index, Map, MapUpdatedEvent, Mouse, Position, UserInterfaceInteractionEvent,
@@ -13,6 +13,7 @@ pub enum PathfindingAlgorithm {
     AStar,
     BFS,
     Dijkstra,
+    Jps,
 }
 
 #[derive(Debug)]
@@ -96,6 +97,13 @@ pub fn placement_system(
         if clicked_position == game_state.start || clicked_position == game_state.goal {
             return;
         }
+
+        if map.outside(x, y) {
+            return;
+        }
+
+        println!("[{},{}], mod:{:?}", x, y, game_state.placement_mode);
+
         // println!("clicked index x: {}, y: {}", x, y);
         match game_state.placement_mode {
             PlacementMode::Path => {
@@ -135,6 +143,7 @@ pub fn placement_system(
             }
         }
         game_state.path = Vec::new();
+        game_state.searched = Vec::new();
         map_updated_event_writer.send(MapUpdatedEvent {});
     }
 }
@@ -311,6 +320,20 @@ pub fn solve_system(
 
                 game_state.searched = searched;
             }
+            PathfindingAlgorithm::Jps => {
+                let result = Jps::find_path(&map, start, goal);
+                if let Some(result) = result.0 {
+                    println!("Path: {:?}", result);
+                    game_state.path = result;
+                    game_state.step = game_state.path.len();
+                } else {
+                    println!("No Path Found!");
+                    game_state.path = Vec::new();
+                    game_state.step = 0;
+                }
+
+                game_state.searched = result.1;
+            }
         }
         map_updated_event_writer.send(MapUpdatedEvent {});
     }
@@ -367,6 +390,10 @@ pub fn change_pathfinding_algorithm_system(
             }
             PathfindingAlgorithm::Dijkstra => {
                 game_state.pathfinding_algorithm = PathfindingAlgorithm::Dijkstra;
+            }
+
+            PathfindingAlgorithm::Jps => {
+                game_state.pathfinding_algorithm = PathfindingAlgorithm::Jps
             }
         }
         pathfinding_algorithm_changed_event_writer.send(PathfindingAlgorithmChangedEvent {});

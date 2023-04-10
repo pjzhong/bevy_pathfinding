@@ -865,7 +865,7 @@ pub fn show_hide_increase_decrease_cost_buttons(
 ) {
     for _ in pathfinding_algorithm_changed_event_reader.iter() {
         match game_state.pathfinding_algorithm {
-            PathfindingAlgorithm::BFS => {
+            PathfindingAlgorithm::BFS | PathfindingAlgorithm::Jps => {
                 for mut visibility in increase_cost_button_query.iter_mut() {
                     visibility.is_visible = false;
                 }
@@ -1034,10 +1034,11 @@ pub fn cycle_algorithm_selection_system(
     for _ in cycle_algorithm_left_event_reader.iter() {
         let new_pathfinding_algorithm;
         match game_state.pathfinding_algorithm {
+            PathfindingAlgorithm::BFS => new_pathfinding_algorithm = PathfindingAlgorithm::Jps,
+            PathfindingAlgorithm::Jps => new_pathfinding_algorithm = PathfindingAlgorithm::AStar,
             PathfindingAlgorithm::AStar => {
                 new_pathfinding_algorithm = PathfindingAlgorithm::Dijkstra
             }
-            PathfindingAlgorithm::BFS => new_pathfinding_algorithm = PathfindingAlgorithm::AStar,
             PathfindingAlgorithm::Dijkstra => new_pathfinding_algorithm = PathfindingAlgorithm::BFS,
         }
         pathfinding_algorithm_selection_changed_event_writer.send(
@@ -1049,11 +1050,12 @@ pub fn cycle_algorithm_selection_system(
     for _ in cycle_algorithm_right_event_reader.iter() {
         let new_pathfinding_algorithm;
         match game_state.pathfinding_algorithm {
-            PathfindingAlgorithm::AStar => new_pathfinding_algorithm = PathfindingAlgorithm::BFS,
             PathfindingAlgorithm::BFS => new_pathfinding_algorithm = PathfindingAlgorithm::Dijkstra,
             PathfindingAlgorithm::Dijkstra => {
                 new_pathfinding_algorithm = PathfindingAlgorithm::AStar
             }
+            PathfindingAlgorithm::AStar => new_pathfinding_algorithm = PathfindingAlgorithm::Jps,
+            PathfindingAlgorithm::Jps => new_pathfinding_algorithm = PathfindingAlgorithm::BFS,
         }
         pathfinding_algorithm_selection_changed_event_writer.send(
             PathfindingAlgorithmSelectionChangedEvent {
@@ -1080,6 +1082,7 @@ pub fn update_current_algorithm_text_system(
                 PathfindingAlgorithm::Dijkstra => {
                     text.sections[0].value = "Dijkstra".to_string();
                 }
+                PathfindingAlgorithm::Jps => text.sections[0].value = "Jps".to_string(),
             }
         }
     }

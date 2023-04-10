@@ -44,11 +44,23 @@ impl Map {
     }
 
     pub fn is_blocked(&self, x: i32, y: i32) -> bool {
-        self.blocked[self.xy_idx(x, y)]
+        self.outside(x, y) || self.blocked[self.xy_idx(x, y)]
     }
 
     pub fn is_path(&self, x: i32, y: i32) -> bool {
-        !self.is_blocked(x, y)
+        self.inside(x, y) & !self.is_blocked(x, y)
+    }
+
+    pub fn walkable_position(&self, x: i32, y: i32) -> Option<Position> {
+        if self.outside(x, y) {
+            return None;
+        }
+
+        if self.is_blocked(x, y) {
+            return None;
+        }
+
+        Some(Position(x, y))
     }
 
     pub fn get_successors(&self, position: &Position, allow_diagonals: bool) -> Vec<Successor> {
@@ -102,6 +114,14 @@ pub struct Position(pub i32, pub i32);
 impl Position {
     pub fn distance(&self, other: &Position) -> i32 {
         (self.0.abs_diff(other.0) + self.1.abs_diff(other.1)) as i32
+    }
+
+    pub fn x(&self) -> i32 {
+        self.0
+    }
+
+    pub fn y(&self) -> i32 {
+        self.1
     }
 }
 

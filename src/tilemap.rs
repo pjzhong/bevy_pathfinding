@@ -143,9 +143,7 @@ pub fn setup_costs_tilemap(mut commands: Commands, asset_server: Res<AssetServer
                     )
                     .with_alignment(TextAlignment::CENTER),
                     transform: Transform::from_xyz(world_position.x, world_position.y, 1.0),
-                    visibility: Visibility {
-                        is_visible: false,
-                    },
+                    visibility: Visibility { is_visible: false },
                     ..default()
                 });
 
@@ -282,7 +280,7 @@ pub fn show_hide_cost_tilemap(
 ) {
     for _ in pathfinding_algorithm_changed_event_reader.iter() {
         match game_state.pathfinding_algorithm {
-            PathfindingAlgorithm::BFS => {
+            PathfindingAlgorithm::BFS | PathfindingAlgorithm::Jps => {
                 for mut cost_tile_visibility in cost_tile_query.iter_mut() {
                     cost_tile_visibility.is_visible = false;
                 }
