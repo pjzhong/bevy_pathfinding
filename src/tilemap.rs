@@ -109,7 +109,7 @@ pub fn setup_path_tilemap(mut commands: Commands, asset_server: Res<AssetServer>
         });
 }
 
-pub fn setup_costs_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_costs_tilemap(mut commands: Commands, asset_server: Res<AssetServer>, map: Res<Map>) {
     println!("Setup Costs TileMap...");
     let tilemap_size = TilemapSize {
         x: MAP_WIDTH as u32,
@@ -123,10 +123,10 @@ pub fn setup_costs_tilemap(mut commands: Commands, asset_server: Res<AssetServer
         for x in 0..tilemap_size.x {
             let world_position = index_to_world_position(x as i32, y as i32);
             let tile_position = TilePos { x, y };
-            let tile_entity = commands
-                .spawn()
+            let mut command = commands.spawn();
+
+            command
                 .insert(Name::new(format!("Cost Tile: {}, {}", x, y)))
-                .insert(CostsTile {})
                 .insert_bundle(TileBundle {
                     position: tile_position,
                     tilemap_id: TilemapId(tilemap_entity),
@@ -143,9 +143,16 @@ pub fn setup_costs_tilemap(mut commands: Commands, asset_server: Res<AssetServer
                     )
                     .with_alignment(TextAlignment::CENTER),
                     transform: Transform::from_xyz(world_position.x, world_position.y, 1.0),
+                    visibility: Visibility {
+                        is_visible: false,
+                    },
                     ..default()
-                })
-                .id();
+                });
+
+            if map.is_path(x as i32, y as i32) {
+                command.insert(CostsTile {});
+            }
+            let tile_entity = command.id();
             tile_storage.set(&tile_position, Some(tile_entity));
         }
     }
@@ -203,6 +210,16 @@ pub fn draw_path_tilemap(
                     }
                 }
             }
+
+            for point in &game_state.searched {
+                let tile_position = TilePos::new(point.0 as u32, point.1 as u32);
+                if let Some(tile_entity) = tile_storage.get(&tile_position) {
+                    if let Ok(mut tile_texture) = tile_texture_query.get_mut(tile_entity) {
+                        tile_texture.0 = 6;
+                    }
+                }
+            }
+
             if !game_state.path.is_empty() {
                 for i in 1..game_state.step {
                     let point = game_state.path[i];

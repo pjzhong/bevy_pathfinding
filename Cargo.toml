@@ -21,6 +21,7 @@ bevy-inspector-egui = "0.12.*"
 bevy_rapier2d = { version = "0.16.*", features = ["debug-render", "serde-serialize", "simd-stable"] } # https://crates.io/crates/bevy_rapier2d
 pathfinding = "3.0.*" # https://crates.io/crates/pathfinding
 rand = "*" # https://crates.io/crates/rand
+noise = "0.7.0"
 
 # Guide https://bevy-cheatbook.github.io/setup/bevy-config.html
 [dependencies.bevy]

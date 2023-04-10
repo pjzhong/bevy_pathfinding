@@ -61,8 +61,12 @@ fn main() {
         .add_event::<PathfindingAlgorithmChangedEvent>()
         .add_startup_system(setup_physics)
         .add_startup_system(setup_map.label(Setup::Map))
-        .add_startup_system(setup_path_tilemap.label(Setup::TileMap))
-        .add_startup_system(setup_costs_tilemap.label(Setup::CostsTileMap))
+        .add_startup_system_set_to_stage(
+            StartupStage::PostStartup,
+            SystemSet::new()
+                .with_system(setup_path_tilemap.label(Setup::TileMap))
+                .with_system(setup_costs_tilemap.label(Setup::CostsTileMap)),
+        )
         .add_startup_system(setup_mouse)
         .add_startup_system(
             setup_game

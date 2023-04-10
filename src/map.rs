@@ -1,7 +1,11 @@
 use bevy::prelude::*;
+use noise::{
+    utils::{NoiseMapBuilder, PlaneMapBuilder},
+    Fbm, MultiFractal,
+};
 
 pub const MAP_WIDTH: i32 = 64;
-pub const MAP_HEIGHT: i32 = 64;
+pub const MAP_HEIGHT: i32 = 32;
 
 /// === Events ===
 pub struct MapUpdatedEvent {}
@@ -29,6 +33,22 @@ impl Map {
 
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
         (y as usize * self.width as usize) + x as usize
+    }
+
+    pub fn inside(&self, x: i32, y: i32) -> bool {
+        0 <= x && x < self.width && 0 <= y && y < self.height
+    }
+
+    pub fn outside(&self, x: i32, y: i32) -> bool {
+        !self.inside(x, y)
+    }
+
+    pub fn is_blocked(&self, x: i32, y: i32) -> bool {
+        self.blocked[self.xy_idx(x, y)]
+    }
+
+    pub fn is_path(&self, x: i32, y: i32) -> bool {
+        !self.is_blocked(x, y)
     }
 
     pub fn get_successors(&self, position: &Position, allow_diagonals: bool) -> Vec<Successor> {
@@ -94,6 +114,26 @@ pub struct Successor {
 /// === Systems ===
 pub fn setup_map(mut commands: Commands) {
     println!("Setup Map...");
-    let map = Map::new(MAP_WIDTH, MAP_HEIGHT, false);
+    let mut map = Map::new(MAP_WIDTH, MAP_HEIGHT, true);
+    //噪音函数，自动生成阻挡物
+    let fbm = Fbm::new()
+        .set_octaves(16)
+        .set_frequency(1.5)
+        .set_lacunarity(3.0)
+        .set_persistence(0.9);
+    let plane = PlaneMapBuilder::new(&fbm)
+        .set_size(MAP_WIDTH as usize, MAP_HEIGHT as usize)
+        .build();
+    //阻挡物生成阈值
+    let threshold = 0.3;
+    for w in 0..MAP_WIDTH {
+        for h in 0..MAP_HEIGHT {
+            if threshold < plane.get_value(w as usize, h as usize) {
+                let idx = map.xy_idx(w, h);
+                map.blocked[idx] = true;
+            }
+        }
+    }
+
     commands.insert_resource(map);
 }

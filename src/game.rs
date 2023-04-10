@@ -1,5 +1,8 @@
 use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 use pathfinding::prelude::{astar, bfs, dijkstra};
+
+use crate::{CostsTile, CostsTileMap};
 
 use super::{
     world_position_to_index, Map, MapUpdatedEvent, Mouse, Position, UserInterfaceInteractionEvent,
@@ -30,6 +33,7 @@ pub struct GameState {
     pub start: Position,
     pub goal: Position,
     pub path: Vec<Position>,
+    pub searched: Vec<Position>,
     pub step: usize,
 }
 
@@ -62,9 +66,10 @@ pub fn setup_game(
     commands.insert_resource(GameState {
         pathfinding_algorithm: PathfindingAlgorithm::BFS,
         placement_mode: PlacementMode::Obstacle,
-        start: Position(16, 32),
-        goal: Position(48, 32),
+        start: Position(8, 16),
+        goal: Position(23, 16),
         path: Vec::new(),
+        searched: Vec::new(),
         step: 0,
     });
     map_updated_event_writer.send(MapUpdatedEvent {});
@@ -74,9 +79,11 @@ pub fn setup_game(
 pub fn placement_system(
     mut user_interface_interaction_event_reader: EventReader<UserInterfaceInteractionEvent>,
     mut map_updated_event_writer: EventWriter<MapUpdatedEvent>,
+    tile_storage_query: Query<&TileStorage, With<CostsTileMap>>,
     mouse: Res<Mouse>,
     mut game_state: ResMut<GameState>,
     mut map: ResMut<Map>,
+    mut commands: Commands,
 ) {
     // This is a hack to prevent placement when buttons are clicked.
     for _ in user_interface_interaction_event_reader.iter() {
@@ -94,10 +101,28 @@ pub fn placement_system(
             PlacementMode::Path => {
                 let index = map.xy_idx(x, y);
                 map.blocked[index] = false;
+
+                if let Ok(tile_storage) = tile_storage_query.get_single() {
+                    if let Some(entity) = tile_storage.get(&TilePos {
+                        x: x as u32,
+                        y: y as u32,
+                    }) {
+                        commands.entity(entity).insert(CostsTile {});
+                    }
+                }
             }
             PlacementMode::Obstacle => {
                 let index = map.xy_idx(x, y);
                 map.blocked[index] = true;
+
+                if let Ok(tile_storage) = tile_storage_query.get_single() {
+                    if let Some(entity) = tile_storage.get(&TilePos {
+                        x: x as u32,
+                        y: y as u32,
+                    }) {
+                        commands.entity(entity).remove::<CostsTile>();
+                    }
+                }
             }
             PlacementMode::Start => {
                 game_state.start = Position(x, y);
@@ -127,6 +152,11 @@ pub fn cost_system(
     }
     if mouse_input.just_pressed(MouseButton::Left) {
         let (x, y) = world_position_to_index(mouse.world_position);
+
+        if map.outside(x, y) {
+            return;
+        }
+
         let clicked_position = Position(x, y);
         // Prevent placing on start or goal:
         if clicked_position == game_state.start || clicked_position == game_state.goal {
@@ -186,13 +216,21 @@ pub fn solve_system(
         let goal = game_state.goal;
         match game_state.pathfinding_algorithm {
             PathfindingAlgorithm::AStar => {
+                let mut searched = Vec::new();
                 let result = astar(
                     &start,
                     |position| {
-                        map.get_successors(position, map.allow_diagonals)
+                        let successors = map
+                            .get_successors(position, map.allow_diagonals)
                             .iter()
                             .map(|successor| (successor.position, successor.cost))
-                            .collect::<Vec<_>>()
+                            .collect::<Vec<_>>();
+
+                        for suc in &successors {
+                            searched.push(suc.0);
+                        }
+
+                        successors
                     },
                     |position| position.distance(&goal),
                     |position| *position == goal,
@@ -207,15 +245,25 @@ pub fn solve_system(
                     game_state.path = Vec::new();
                     game_state.step = 0;
                 }
+
+                game_state.searched = searched;
             }
             PathfindingAlgorithm::BFS => {
+                let mut searched = Vec::new();
                 let result = bfs(
                     &start,
                     |position| {
-                        map.get_successors(position, map.allow_diagonals)
+                        let successors = map
+                            .get_successors(position, map.allow_diagonals)
                             .iter()
                             .map(|successor| successor.position)
-                            .collect::<Vec<_>>()
+                            .collect::<Vec<_>>();
+
+                        for pos in &successors {
+                            searched.push(pos.clone())
+                        }
+
+                        successors
                     },
                     |position| *position == goal,
                 );
@@ -228,15 +276,25 @@ pub fn solve_system(
                     game_state.path = Vec::new();
                     game_state.step = 0;
                 }
+
+                game_state.searched = searched;
             }
             PathfindingAlgorithm::Dijkstra => {
+                let mut searched = Vec::new();
                 let result = dijkstra(
                     &start,
                     |position| {
-                        map.get_successors(position, map.allow_diagonals)
+                        let successors = map
+                            .get_successors(position, map.allow_diagonals)
                             .iter()
                             .map(|successor| (successor.position, successor.cost))
-                            .collect::<Vec<_>>()
+                            .collect::<Vec<_>>();
+
+                        for suc in &successors {
+                            searched.push(suc.0);
+                        }
+
+                        successors
                     },
                     |position| *position == goal,
                 );
@@ -250,6 +308,8 @@ pub fn solve_system(
                     game_state.path = Vec::new();
                     game_state.step = 0;
                 }
+
+                game_state.searched = searched;
             }
         }
         map_updated_event_writer.send(MapUpdatedEvent {});
@@ -264,6 +324,7 @@ pub fn reset_system(
 ) {
     for _ in reset_event_reader.iter() {
         game_state.path = Vec::new();
+        game_state.searched = Vec::new();
         map_updated_event_writer.send(MapUpdatedEvent {});
     }
 }
@@ -277,8 +338,9 @@ pub fn clear_system(
 ) {
     for _ in clear_event_reader.iter() {
         game_state.path = Vec::new();
-        game_state.start = Position(16, 32);
-        game_state.goal = Position(48, 32);
+        game_state.start = Position(8, 16);
+        game_state.goal = Position(24, 16);
+        game_state.searched.clear();
         map.costs = vec![Some(1); (map.width * map.height) as usize];
         map.blocked = vec![false; (map.width * map.height) as usize];
         map_updated_event_writer.send(MapUpdatedEvent {});
