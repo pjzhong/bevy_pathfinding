@@ -67,8 +67,8 @@ pub fn setup_game(
     commands.insert_resource(GameState {
         pathfinding_algorithm: PathfindingAlgorithm::BFS,
         placement_mode: PlacementMode::Obstacle,
-        start: Position(8, 16),
-        goal: Position(23, 16),
+        start: Position(2, 4),
+        goal: Position(6, 4),
         path: Vec::new(),
         searched: Vec::new(),
         step: 0,
@@ -361,8 +361,8 @@ pub fn clear_system(
 ) {
     for _ in clear_event_reader.iter() {
         game_state.path = Vec::new();
-        game_state.start = Position(8, 16);
-        game_state.goal = Position(24, 16);
+        game_state.start = Position(2, 4);
+        game_state.goal = Position(6, 4);
         game_state.searched.clear();
         map.costs = vec![Some(1); (map.width * map.height) as usize];
         map.blocked = vec![false; (map.width * map.height) as usize];

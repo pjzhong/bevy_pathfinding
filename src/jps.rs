@@ -12,7 +12,7 @@ struct Heuristic;
 
 impl Heuristic {
     pub fn octile(dx: f32, dy: f32) -> f32 {
-        let squart2 = SQRT_2;
+        let squart2 = SQRT_2 - 1.0;
         if dx < dy {
             squart2 * dx + dy
         } else {
@@ -130,7 +130,7 @@ impl Jps {
         tested: &mut HashSet<Position>,
     ) {
         let (end_x, end_y) = (goal.x(), goal.y());
-        let neighbors = sort_neightbors(Jps::find_neighbors(graph, node.clone()), goal);
+        let neighbors = Jps::find_neighbors(graph, node.clone());
         for neighbor in neighbors {
             let jump_point = Jps::jump(graph, neighbor, node.node, goal, tested);
             if let Some(jump_point) = jump_point {
@@ -146,18 +146,14 @@ impl Jps {
                 };
                 let ng = node.g + d; //next 'g' value
 
-                let (none, perv_h, prev_g) = node_path
+                let (none, prev_g) = node_path
                     .get(&jump_point)
-                    .map_or((true, 0.0, 0.0), |pn| (false, pn.h, pn.g));
+                    .map_or((true,  0.0), |pn| (false, pn.g));
                 if none || ng < prev_g {
                     let mut jump_node = PathNode::new(jump_point.clone());
                     jump_node.set_parent(node.clone());
                     jump_node.g = ng;
-                    jump_node.h = if 0.0 < perv_h {
-                        perv_h
-                    } else {
-                        Heuristic::manhattan((jx - end_x).abs() as f32, (jy - end_y).abs() as f32)
-                    };
+                    jump_node.h = Heuristic::manhattan((jx - end_x).abs() as f32, (jy - end_y).abs() as f32);
                     jump_node.f = jump_node.g + jump_node.h;
 
                     let jump_node = Rc::new(jump_node);

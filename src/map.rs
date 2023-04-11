@@ -4,8 +4,8 @@ use noise::{
     Fbm, MultiFractal,
 };
 
-pub const MAP_WIDTH: i32 = 64;
-pub const MAP_HEIGHT: i32 = 32;
+pub const MAP_WIDTH: i32 = 8;
+pub const MAP_HEIGHT: i32 = 8;
 
 /// === Events ===
 pub struct MapUpdatedEvent {}
