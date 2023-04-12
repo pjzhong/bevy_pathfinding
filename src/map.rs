@@ -4,8 +4,8 @@ use noise::{
     Fbm, MultiFractal,
 };
 
-pub const MAP_WIDTH: i32 = 8;
-pub const MAP_HEIGHT: i32 = 8;
+pub const MAP_WIDTH: i32 = 16;
+pub const MAP_HEIGHT: i32 = 16;
 
 /// === Events ===
 pub struct MapUpdatedEvent {}
@@ -63,48 +63,54 @@ impl Map {
         Some(Position(x, y))
     }
 
-    pub fn get_successors(&self, position: &Position, allow_diagonals: bool) -> Vec<Successor> {
-        let mut successors = Vec::new();
+    pub fn get_successors(&self, node: &Position) -> Vec<Successor> {
+        let (x, y) = (node.x(), node.y());
 
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                let x = position.0 + dx;
-                let y = position.1 + dy;
-                if dx == 0 && dy == 0 {
-                    continue;
-                } // Exclude current position.
-                if !allow_diagonals {
-                    if (dx + dy).abs() != 1 {
-                        continue;
-                    } // Exclude diagonals.
-                }
-                if x < 0 || x > self.width - 1 {
-                    continue;
-                } // Make sure we are within width bounds.
-                if y < 0 || y > self.height - 1 {
-                    continue;
-                } // Make sure we are within height bounds.
+        let n = self.walkable_position(x, y - 1);
+        let e = self.walkable_position(x + 1, y);
+        let s = self.walkable_position(x, y + 1);
+        let w = self.walkable_position(x - 1, y);
 
-                let neighbor_position = Position(x, y);
-                let neighbor_index = self.xy_idx(x, y);
-                if self.blocked[neighbor_index] {
-                    continue;
-                }
+        let nw = if n.is_some() || w.is_some() {
+            self.walkable_position(x - 1, y - 1)
+        } else {
+            None
+        };
+        let ne = if n.is_some() || e.is_some() {
+            self.walkable_position(x + 1, y - 1)
+        } else {
+            None
+        };
+        let se = if s.is_some() || e.is_some() {
+            self.walkable_position(x + 1, y + 1)
+        } else {
+            None
+        };
+        let sw = if s.is_some() || w.is_some() {
+            self.walkable_position(x - 1, y + 1)
+        } else {
+            None
+        };
+
+        vec![n, e, s, w, nw, ne, se, sw]
+            .into_iter()
+            .flatten()
+            .map(|node| {
+                let neighbor_index = self.xy_idx(node.x(), node.y());
                 let neighbor_cost = self.costs[neighbor_index];
                 if let Some(neighbor_cost) = neighbor_cost {
-                    successors.push(Successor {
-                        position: neighbor_position,
+                    Successor {
+                        position: node,
                         cost: neighbor_cost,
-                    })
+                    }
                 } else {
-                    successors.push(Successor {
-                        position: neighbor_position,
+                    Successor {
+                        position: node,
                         cost: 1,
-                    })
+                    }
                 }
-            }
-        }
-        successors
+            })
+            .collect()
     }
 }
 

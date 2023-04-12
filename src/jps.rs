@@ -148,12 +148,13 @@ impl Jps {
 
                 let (none, prev_g) = node_path
                     .get(&jump_point)
-                    .map_or((true,  0.0), |pn| (false, pn.g));
+                    .map_or((true, 0.0), |pn| (false, pn.g));
                 if none || ng < prev_g {
                     let mut jump_node = PathNode::new(jump_point.clone());
                     jump_node.set_parent(node.clone());
                     jump_node.g = ng;
-                    jump_node.h = Heuristic::manhattan((jx - end_x).abs() as f32, (jy - end_y).abs() as f32);
+                    jump_node.h =
+                        Heuristic::manhattan((jx - end_x).abs() as f32, (jy - end_y).abs() as f32);
                     jump_node.f = jump_node.g + jump_node.h;
 
                     let jump_node = Rc::new(jump_node);
@@ -260,7 +261,7 @@ impl Jps {
             if dx != 0 && dy != 0 {
                 let mut vec = vec![];
                 let horizonetal = graph.walkable_position(x, y + dy);
-                let vertically = graph.walkable_position(x + y, y);
+                let vertically = graph.walkable_position(x + dx, y);
 
                 // moving horizonetally and vertically first
                 if let Some(node) = horizonetal.as_ref() {
@@ -427,6 +428,24 @@ fn back_trace(path_node: Rc<PathNode>) -> Vec<Position> {
     let mut start = Some(path_node);
     while let Some(node) = start {
         result.push(node.node);
+        if let Some(parent) = node.parent.as_ref() {
+            let (dx, dy) = (node.get_x() - parent.get_x(), node.get_y() - parent.get_y());
+            let (dx, dy) = (
+                if 0 != dx { dx / dx.abs() } else { 0 },
+                if 0 != dy { dy / dy.abs() } else { 0 },
+            );
+            let (mut x, mut y) = (node.get_x(), node.get_y());
+
+            loop {
+                let pos = Position(x, y);
+                if pos == parent.node {
+                    break;
+                }
+                result.push(pos);
+                x -= dx;
+                y -= dy;
+            }
+        }
         start = node.parent.clone();
     }
     result

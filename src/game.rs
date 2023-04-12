@@ -230,7 +230,7 @@ pub fn solve_system(
                     &start,
                     |position| {
                         let successors = map
-                            .get_successors(position, map.allow_diagonals)
+                            .get_successors(position)
                             .iter()
                             .map(|successor| (successor.position, successor.cost))
                             .collect::<Vec<_>>();
@@ -263,7 +263,7 @@ pub fn solve_system(
                     &start,
                     |position| {
                         let successors = map
-                            .get_successors(position, map.allow_diagonals)
+                            .get_successors(position)
                             .iter()
                             .map(|successor| successor.position)
                             .collect::<Vec<_>>();
@@ -294,7 +294,7 @@ pub fn solve_system(
                     &start,
                     |position| {
                         let successors = map
-                            .get_successors(position, map.allow_diagonals)
+                            .get_successors(position)
                             .iter()
                             .map(|successor| (successor.position, successor.cost))
                             .collect::<Vec<_>>();
