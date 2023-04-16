@@ -34,6 +34,7 @@ pub struct GameState {
     pub start: Position,
     pub goal: Position,
     pub path: Vec<Position>,
+    pub tested: Vec<Position>,
     pub searched: Vec<Position>,
     pub step: usize,
 }
@@ -70,6 +71,7 @@ pub fn setup_game(
         start: Position(2, 4),
         goal: Position(6, 4),
         path: Vec::new(),
+        tested: Vec::new(),
         searched: Vec::new(),
         step: 0,
     });
@@ -143,6 +145,7 @@ pub fn placement_system(
             }
         }
         game_state.path = Vec::new();
+        game_state.tested = Vec::new();
         game_state.searched = Vec::new();
         map_updated_event_writer.send(MapUpdatedEvent {});
     }
@@ -255,7 +258,7 @@ pub fn solve_system(
                     game_state.step = 0;
                 }
 
-                game_state.searched = searched;
+                game_state.tested = searched;
             }
             PathfindingAlgorithm::BFS => {
                 let mut searched = Vec::new();
@@ -286,7 +289,7 @@ pub fn solve_system(
                     game_state.step = 0;
                 }
 
-                game_state.searched = searched;
+                game_state.tested = searched;
             }
             PathfindingAlgorithm::Dijkstra => {
                 let mut searched = Vec::new();
@@ -318,7 +321,7 @@ pub fn solve_system(
                     game_state.step = 0;
                 }
 
-                game_state.searched = searched;
+                game_state.tested = searched;
             }
             PathfindingAlgorithm::Jps => {
                 let result = Jps::find_path(&map, start, goal);
@@ -332,7 +335,8 @@ pub fn solve_system(
                     game_state.step = 0;
                 }
 
-                game_state.searched = result.1;
+                game_state.tested = result.1;
+                game_state.searched = result.2;
             }
         }
         map_updated_event_writer.send(MapUpdatedEvent {});
@@ -347,6 +351,7 @@ pub fn reset_system(
 ) {
     for _ in reset_event_reader.iter() {
         game_state.path = Vec::new();
+        game_state.tested = Vec::new();
         game_state.searched = Vec::new();
         map_updated_event_writer.send(MapUpdatedEvent {});
     }
@@ -363,6 +368,7 @@ pub fn clear_system(
         game_state.path = Vec::new();
         game_state.start = Position(2, 4);
         game_state.goal = Position(6, 4);
+        game_state.tested.clear();
         game_state.searched.clear();
         map.costs = vec![Some(1); (map.width * map.height) as usize];
         map.blocked = vec![false; (map.width * map.height) as usize];

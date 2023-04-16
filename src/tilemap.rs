@@ -209,11 +209,20 @@ pub fn draw_path_tilemap(
                 }
             }
 
-            for point in &game_state.searched {
+            for point in &game_state.tested {
                 let tile_position = TilePos::new(point.0 as u32, point.1 as u32);
                 if let Some(tile_entity) = tile_storage.get(&tile_position) {
                     if let Ok(mut tile_texture) = tile_texture_query.get_mut(tile_entity) {
                         tile_texture.0 = 6;
+                    }
+                }
+            }
+
+            for point in &game_state.searched {
+                let tile_position = TilePos::new(point.0 as u32, point.1 as u32);
+                if let Some(tile_entity) = tile_storage.get(&tile_position) {
+                    if let Ok(mut tile_texture) = tile_texture_query.get_mut(tile_entity) {
+                        tile_texture.0 = 7;
                     }
                 }
             }

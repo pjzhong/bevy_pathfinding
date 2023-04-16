@@ -79,7 +79,12 @@ impl PartialOrd for PathNode {
 
 impl Ord for PathNode {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.f.total_cmp(&other.f)
+        let ord = self.f.total_cmp(&other.f);
+        if ord == Ordering::Equal {
+            self.node.cmp(&other.node)
+        } else {
+            ord
+        }
     }
 }
 
@@ -88,9 +93,9 @@ impl Jps {
         graph: &Map,
         start: Position,
         end: Position,
-    ) -> (Option<Vec<Position>>, Vec<Position>) {
+    ) -> (Option<Vec<Position>>, Vec<Position>, Vec<Position>) {
         if graph.is_blocked(end.x(), end.y()) {
-            return (None, vec![]);
+            return (None, vec![], vec![]);
         }
 
         let mut open: BTreeSet<Rc<PathNode>> = BTreeSet::new();
@@ -103,9 +108,14 @@ impl Jps {
         while let Some(path_node) = open.pop_first() {
             if path_node.node == end {
                 //TODO backtrace
-                return (Some(back_trace(path_node)), Vec::from_iter(tested));
+                return (
+                    Some(back_trace(path_node)),
+                    Vec::from_iter(tested),
+                    Vec::from_iter(node_path.into_keys()),
+                );
             }
             closed.insert(path_node.node.clone());
+
             Jps::identify_successors(
                 graph,
                 path_node.clone(),
@@ -117,7 +127,11 @@ impl Jps {
             );
         }
 
-        (None, Vec::from_iter(tested))
+        (
+            None,
+            Vec::from_iter(tested),
+            Vec::from_iter(node_path.into_keys()),
+        )
     }
 
     fn identify_successors(
@@ -129,6 +143,7 @@ impl Jps {
         node_path: &mut HashMap<Position, Rc<PathNode>>,
         tested: &mut HashSet<Position>,
     ) {
+        let (x, y) = (node.get_x(), node.get_y());
         let (end_x, end_y) = (goal.x(), goal.y());
         let neighbors = Jps::find_neighbors(graph, node.clone());
         for neighbor in neighbors {
@@ -139,9 +154,13 @@ impl Jps {
                 }
 
                 let (jx, jy) = (jump_point.x(), jump_point.y());
+
+                if jx == 14 && jy == 9 {
+                    println!("haha");
+                }
                 let d = {
-                    let dx = (jx - node.get_x()).abs() as f32;
-                    let dy = (jy - node.get_y()).abs() as f32;
+                    let dx = (jx - x).abs() as f32;
+                    let dy = (jy - y).abs() as f32;
                     Heuristic::octile(dx, dy)
                 };
                 let ng = node.g + d; //next 'g' value
@@ -176,7 +195,7 @@ impl Jps {
     fn jump(
         graph: &Map,
         current: Position,
-        neighbor: Position,
+        parent: Position,
         goal: Position,
         tested: &mut HashSet<Position>,
     ) -> Option<Position> {
@@ -191,7 +210,7 @@ impl Jps {
         tested.insert(current);
 
         let (x, y) = (current.x(), current.y());
-        let (dx, dy) = (current.x() - neighbor.x(), current.y() - neighbor.y());
+        let (dx, dy) = (current.x() - parent.x(), current.y() - parent.y());
 
         // check for forced neighbors
         // along the diagonal
@@ -210,7 +229,7 @@ impl Jps {
             .flatten()
             {
                 if Jps::jump(graph, next, current, goal, tested).is_some() {
-                    return graph.walkable_position(x, y);
+                    return Some(current);
                 }
             }
         } else {
@@ -220,7 +239,7 @@ impl Jps {
                 if graph.is_path(x + dx, y + 1) && graph.is_blocked(x, y + 1)
                     || graph.is_path(x + dx, y - 1) && graph.is_blocked(x, y - 1)
                 {
-                    return graph.walkable_position(x, y);
+                    return Some(current);
                 }
             } else {
                 if graph.is_path(x + 1, y + dy) && graph.is_blocked(x + 1, y)
@@ -271,14 +290,12 @@ impl Jps {
                     vec.push(node.clone());
                 };
 
-                // moving  diagonally
                 if horizonetal.is_some() || vertically.is_some() {
                     if let Some(node) = graph.walkable_position(x + dx, y + dy) {
                         vec.push(node)
                     }
                 }
 
-                // force neighbors
                 if graph.is_blocked(x - dx, y) && graph.is_path(x, y + dy) {
                     if let Some(node) = graph.walkable_position(x - dx, y + dy) {
                         vec.push(node);
@@ -406,22 +423,6 @@ impl Jps {
 //     }
 //     res
 // }
-
-fn sort_neightbors(positions: Vec<Position>, gold: Position) -> Vec<Position> {
-    let mut result = vec![];
-    let (end_x, end_y) = (gold.x(), gold.y());
-    for pos in positions {
-        let val = Heuristic::manhattan(
-            (pos.x() - end_x).abs() as f32,
-            (pos.y() - end_y).abs() as f32,
-        ) as i32;
-        result.push((val, pos));
-    }
-    result.sort_by_key(|v| v.0);
-
-    result.into_iter().map(|v| v.1).collect()
-}
-
 fn back_trace(path_node: Rc<PathNode>) -> Vec<Position> {
     let mut result = vec![];
 
