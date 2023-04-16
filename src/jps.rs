@@ -438,13 +438,13 @@ fn back_trace(path_node: Rc<PathNode>) -> Vec<Position> {
             let (mut x, mut y) = (node.get_x(), node.get_y());
 
             loop {
+                x -= dx;
+                y -= dy;
                 let pos = Position(x, y);
                 if pos == parent.node {
                     break;
                 }
                 result.push(pos);
-                x -= dx;
-                y -= dy;
             }
         }
         start = node.parent.clone();

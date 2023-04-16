@@ -236,7 +236,9 @@ pub fn draw_path_tilemap(
                             tile_texture.0 = 5;
                         }
                     }
+
                 }
+                println!("path step:{:?}", game_state.step);
             }
             // for point in &game_state.path {
             //     let tile_position = TilePos::new(point.0 as u32, point.1 as u32);
